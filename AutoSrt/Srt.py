@@ -20,4 +20,5 @@ class SrtPage:
         self.srt_list = srt_list
 
     def appendSrt(self, srt_item):
+        # FIXME: checkif self.srt_list is 'list' type
         self.srt_list.append(srt_item)
