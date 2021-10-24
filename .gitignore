@@ -131,3 +131,6 @@ dmypy.json
 # User define
 logs/
 *.log
+*.code-workspace
+output/
+*.srt
