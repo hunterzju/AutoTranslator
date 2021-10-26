@@ -4,9 +4,13 @@ import os
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(ROOT_PATH)
 
+from Utils.LogFrame import default_logger
+
+srt_logger = default_logger
+
 class SrtItem:
     __slots__ = ['index', 'timeline', 'content']
-    def __init__(self, idx=None, timeline=None, content=""):
+    def __init__(self, idx=None, timeline=None, content=dict()):
         self.index = idx
         self.timeline = timeline
         self.content = content
@@ -23,11 +27,14 @@ class SrtItem:
     def getTimeline(self):
         return self.timeline
 
-    def addContent(self, content):
-        self.content += content
+    def addContent(self, lang, content):
+        self.content[lang] = content
     
-    def getContent(self):
-        return self.content
+    def getContent(self, lang):
+        if lang not in self.content.keys():
+            srt_logger.error("key-{} not found in srt content.".format(lang))
+            return None
+        return self.content[lang]
 
 class SrtPage:
     def __init__(self, lang=None, srt_list=[]):

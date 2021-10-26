@@ -7,7 +7,7 @@ class LoggerExt:
         # info log
         logger.add(
             os.path.join(logpath, "logs/Info-{time:YYYY-MM-DD}.log"),
-            format = "{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
+            format = "{time:YYYY-MM-DD at HH:mm:ss} | {level} | {file} : {function} : {line} | {message}",
             filter = lambda x: True if x["level"].name == "INFO" else False,
             rotation = "10MB", retention=7, level="INFO", encoding='utf-8',
             compression = "zip"
@@ -22,7 +22,7 @@ class LoggerExt:
         # error log
         logger.add(
             os.path.join(logpath, "logs/Error-{time:YYYY-MM-DD}.log"),
-            format = "{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
+            format = "{time:YYYY-MM-DD at HH:mm:ss} | {level} | {file} : {function} : {line} | {message}",
             filter = lambda x: True if x["level"].name == "ERROR" else False,
             rotation = "10MB", retention=7, level="ERROR", encoding='utf-8',
             compression = "zip"

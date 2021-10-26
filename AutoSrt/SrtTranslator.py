@@ -4,13 +4,15 @@ from AutoSrt import DEBUG
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(ROOT_PATH)
 
+import time
+import random
 from Srt import SrtItem, SrtPage, StringOPs
 # from google.cloud import translate_v2 as Translator
 from pygoogletranslation import Translator
 from Utils.LogFrame import default_logger, LoggerExt
 
 trans_logger = default_logger
-str_ops = StringOPs()
+g_str_ops = StringOPs()
 
 '''
 description: Translate Srt file from source language to destination language.
@@ -23,9 +25,6 @@ class SrtTranslator():
         self.dst_lang = dst_lang
         self.src_page = src_page
         self.dst_page = dst_page
-        self.src_content = None
-        self.dst_content = None
-        self.logger = LoggerExt('./').get()
         self.trans_client = Translator()
     
     def setSrcLanguage(self, language):
@@ -45,18 +44,6 @@ class SrtTranslator():
     
     def setDstPage(self, dst_page):
         self.dst_page = dst_page
-    
-    def setSrcContent(self, content):
-        self.src_content = content
-    
-    def getSrcContent(self):
-        return self.src_content
-    
-    def setDstContent(self, content):
-        self.dst_content = content
-    
-    def getDstContent(self):
-        return self.dst_content
 
     '''
     description: load SrtPage from lines in file.
@@ -70,23 +57,28 @@ class SrtTranslator():
         if src_lang is None:
             self.logger.warning("src lange is not set, use {} instead.".format(self.src_lang))
             src_lang = self.src_lang
-        srt_page = SrtPage(lang=src_lang)
+        srt_page = SrtPage(lang=src_lang, srt_list=[])
 
         srt_item = None
         for idx, line in enumerate(lines):
             line = line.strip('\n')
             if idx % 4 == 0:
-                srt_item = SrtItem(idx=int(line))
+                srt_item = SrtItem(idx=int(line), content=dict())
             elif idx % 4 == 1:
                 srt_item.setTimeline(line)
             elif idx % 4 == 2:
-                srt_item.addContent(line)
+                srt_item.addContent(self.src_lang, line)
                 srt_page.appendSrt(srt_item)
             else:
                 continue
         
-        self.src_page = srt_page
+        self.setSrcPage(srt_page)
     
+    '''
+    description: extract content from src page items.
+    param {*} self
+    return {*} content - raw text in src language.
+    '''
     def importContentFromPage(self):
         content = ""
 
@@ -94,18 +86,64 @@ class SrtTranslator():
             trans_logger.error("translator src page is None")
             return None
 
-        for item in self.src_page.srt_list:
-            content += item.content
+        for item in self.src_page.getSrtList():
+            content += item.getContent(self.src_lang).strip()
+        
+        if DEBUG:
+            trans_logger.debug(content)
+
         return content
 
     '''
-    description: translate from Src content to Dst content
-    param {} content - src txt content
-    param {} dst_lang - dst lanuage, get from 
-    return {*} res - Translated object in pygoogletranslation, origin for src language, text for dst language.
+    description: split origin text by sentence and construct dst page
+    param {*} self
+    param {*} content - origin content
+    return {*} dst_page
+    '''
+    def constructDstPage(self, content):
+        new_page = SrtPage(lang=self.dst_lang ,srt_list=[])
+        self.setDstPage(new_page)
+
+        origin_text_list = g_str_ops.Spliter(content, split_sbls=r"[.|!|?]")
+        origin_len = len(origin_text_list)
+
+        src_list = self.src_page.getSrtList()
+        src_len = len(src_list)
+
+        write_idx = 0
+        for idx in range(src_len):
+            dst_item = SrtItem(idx=src_list[idx].getIdx(), timeline=src_list[idx].getTimeline(), content=dict())
+            if idx < origin_len:
+                dst_item.addContent(self.src_lang, origin_text_list[idx].strip())
+
+            if DEBUG:
+                trans_logger.debug(str(idx)+":"+str(dst_item.content))
+
+            self.dst_page.appendSrt(dst_item)
+            write_idx = idx
+        
+        # if split origin item is more than src srt item, create new item with last timeline in src.
+        if write_idx < origin_len:
+            for idx in range(write_idx, origin_len):
+                dst_item = SrtItem(idx=idx, timeline=src_list[-1].getTimeline())
+                dst_item.addContent(self.src_lang, origin_text_list[idx].strip())
+
+                if DEBUG:
+                    trans_logger.debug(str(idx) + str(dst_item.content))
+
+                self.dst_page.appendSrt(dst_item)
+                write_idx = idx
+        
+        return self.dst_page
+
+    '''
+    description: translate from Src content to Dst content by item.
+    param {} dst_lang - dst lanuage
+    return {*} dst_page - dst page
+    res - Translated object in pygoogletranslation, origin for src language, text for dst language.
     reflink:https://github.com/Saravananslb/py-googletranslation
     '''
-    def translateContent(self, content, dst_lang=None):
+    def translateContent(self, dst_lang=None):
         if self.trans_client == None:
             trans_logger.error("No translator Found.")
             sys.exit(-1)
@@ -113,12 +151,19 @@ class SrtTranslator():
             trans_logger.warning("Translator dst language not set. Use default language {}".format(self.dst_lang))
             dst_lang = self.dst_lang
 
-        if self.dst_page is None:
-            new_page = SrtPage(lang=dst_lang, srt_list=[])
-            self.setDstPage(new_page)
+        for idx, item in enumerate(self.dst_page.getSrtList()):
+            if item.getContent(self.src_lang) in ['' or None]:
+                continue
+            res = self.trans_client.translate(item.getContent(self.src_lang), dest=self.dst_lang)
+            if DEBUG:
+                trans_logger.debug(str(idx) + ":" + str(res))
+            self.dst_page.srt_list[idx].addContent(self.dst_lang, res.text)
 
-        res = self.trans_client.translate(content, dest=dst_lang)
-        return res
+            # avoid ip banned by google, FIXME: use proxy instead.
+            if idx % 5 == 0:
+                time.sleep(random.randrange(10,20))
+        
+        return self.dst_page
 
     # TODO: split translate result and set into Dst srt page
     '''
@@ -150,10 +195,10 @@ class SrtTranslator():
         src_len = len(src_list)
 
 
-        trans_text_list = str_ops.Spliter(content=dst_text, split_sbls=r"[。|！|？]")
+        trans_text_list = g_str_ops.Spliter(content=dst_text, split_sbls=r"[。|！|？]")
         trans_len = len(trans_text_list)
         if origin:
-            origin_text_list = str_ops.Spliter(content=origin_text, split_sbls=r"[.|!|?]")
+            origin_text_list = g_str_ops.Spliter(content=origin_text, split_sbls=r"[.|!|?]")
             origin_len = len(origin_text_list)
         
         write_idx = 0
@@ -166,7 +211,7 @@ class SrtTranslator():
             dst_item.addContent("\n")
 
             if DEBUG:
-                trans_logger.debug(str(idx)+":"+dst_item.getContent())
+                trans_logger.debug(str(idx) + ":" + str(dst_item.content))
 
             self.dst_page.appendSrt(dst_item)
             write_idx = idx
@@ -181,7 +226,7 @@ class SrtTranslator():
                 dst_item.addContent("\n")
 
                 if DEBUG:
-                    trans_logger.debug(dst_item.getContent())
+                    trans_logger.debug(dst_item.content)
 
                 self.dst_page.appendSrt(dst_item)
                 write_idx = idx
@@ -192,20 +237,28 @@ class SrtTranslator():
                 dst_item.addContent(origin_text_list[idx].strip() + "\n")
 
                 if DEBUG:
-                    trans_logger.debug(dst_item.getContent())
+                    trans_logger.debug(dst_item.content)
 
                 self.dst_page.appendSrt(dst_item)
         
         return self.dst_page
 
     # TODO: convert dst page struct into lines to write to file.
-    def exportPageToLines(self):
+    '''
+    description: export dst page into content.
+    param {*} self
+    param {*} origin
+    return {*}
+    '''
+    def exportPageToLines(self, origin=False):
         content = ""
 
         for item in self.dst_page.getSrtList():
             content += str(item.getIdx()) + "\n"
             content += item.getTimeline() + "\n"
-            content += item.getContent()
+            if origin:
+                content += item.getContent(self.src_lang) + "\n"
+            content += item.getContent(self.dst_lang) + "\n"
         
             if DEBUG:
                 trans_logger.debug(content)
