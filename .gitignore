@@ -134,3 +134,4 @@ logs/
 *.code-workspace
 output/
 *.srt
+CS143Srt/
