@@ -135,3 +135,4 @@ logs/
 output/
 *.srt
 CS143Srt/
+config.json

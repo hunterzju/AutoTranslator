@@ -1,18 +1,8 @@
 import sys
 import os
-from AutoSrt import DEBUG
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.append(ROOT_PATH)
-
-import time
-import random
-from Srt import SrtItem, SrtPage, StringOPs
-# from google.cloud import translate_v2 as Translator
-from pygoogletranslation import Translator
-from Utils.LogFrame import default_logger, LoggerExt
-
-trans_logger = default_logger
-g_str_ops = StringOPs()
+from AutoSrt import DEBUG, ROOT_PATH
+# ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+# sys.path.append(ROOT_PATH)
 
 '''
 description: Translate Srt file from source language to destination language.
@@ -26,22 +16,22 @@ class SrtTranslator():
         self.src_page = src_page
         self.dst_page = dst_page
         self.trans_client = Translator()
-    
+
     def setSrcLanguage(self, language):
         self.src_lang = language            # TODO: assert language Enum
-    
+
     def getSrcLanguage(self):
         return self.src_lang
-    
+
     def setDstLanguage(self, language):
         self.dst_lang = language
-    
+
     def getDstLanguage(self, language):
         return self.dst_lang
-    
+
     def setSrcPage(self, srt_page):
         self.src_page = srt_page
-    
+
     def setDstPage(self, dst_page):
         self.dst_page = dst_page
 
@@ -71,9 +61,9 @@ class SrtTranslator():
                 srt_page.appendSrt(srt_item)
             else:
                 continue
-        
+
         self.setSrcPage(srt_page)
-    
+
     '''
     description: extract content from src page items.
     param {*} self
@@ -88,7 +78,7 @@ class SrtTranslator():
 
         for item in self.src_page.getSrtList():
             content += item.getContent(self.src_lang).strip()
-        
+
         if DEBUG:
             trans_logger.debug(content)
 
@@ -121,7 +111,7 @@ class SrtTranslator():
 
             self.dst_page.appendSrt(dst_item)
             write_idx = idx
-        
+
         # if split origin item is more than src srt item, create new item with last timeline in src.
         if write_idx < origin_len:
             for idx in range(write_idx, origin_len):
@@ -133,7 +123,7 @@ class SrtTranslator():
 
                 self.dst_page.appendSrt(dst_item)
                 write_idx = idx
-        
+
         return self.dst_page
 
     '''
@@ -154,7 +144,8 @@ class SrtTranslator():
         for idx, item in enumerate(self.dst_page.getSrtList()):
             if item.getContent(self.src_lang) in ['' or None]:
                 continue
-            res = self.trans_client.translate(item.getContent(self.src_lang), dest=self.dst_lang)
+            # res = self.trans_client.translate(item.getContent(self.src_lang), dest=self.dst_lang)
+            res = translateText(item.getContent(self.src_lang), self.dst_lang, self.src_lang)
             if DEBUG:
                 trans_logger.debug(str(idx) + ":" + str(res))
             self.dst_page.srt_list[idx].addContent(self.dst_lang, res.text)
@@ -162,7 +153,7 @@ class SrtTranslator():
             # avoid ip banned by google, FIXME: use proxy instead.
             if idx % 5 == 0:
                 time.sleep(random.randrange(10,20))
-        
+
         return self.dst_page
 
     # TODO: split translate result and set into Dst srt page
@@ -177,7 +168,7 @@ class SrtTranslator():
         if translated_res is None:
             trans_logger.error("translate result is None object.")
             return None
-        
+
         if self.dst_page is None:
             trans_logger.warning("translator dst page is None. Creat a new page.")
             new_page = SrtPage(srt_list=[])
@@ -190,7 +181,7 @@ class SrtTranslator():
             origin_text = translated_res.origin
             if DEBUG:
                 trans_logger.debug(origin_text)
-        
+
         src_list = self.src_page.getSrtList()
         src_len = len(src_list)
 
@@ -200,7 +191,7 @@ class SrtTranslator():
         if origin:
             origin_text_list = g_str_ops.Spliter(content=origin_text, split_sbls=r"[.|!|?]")
             origin_len = len(origin_text_list)
-        
+
         write_idx = 0
         for idx in range(src_len):
             dst_item = SrtItem(idx=src_list[idx].getIdx(), timeline=src_list[idx].getTimeline())
@@ -215,7 +206,7 @@ class SrtTranslator():
 
             self.dst_page.appendSrt(dst_item)
             write_idx = idx
-        
+
         # if translate srt item is more than origin srt item, create new item with last timeline in origin.
         if write_idx < trans_len:
             for idx in range(write_idx, trans_len):
@@ -230,7 +221,7 @@ class SrtTranslator():
 
                 self.dst_page.appendSrt(dst_item)
                 write_idx = idx
-        
+
         if origin and write_idx < origin_len:
             for idx in range(write_idx, origin_len):
                 dst_item = SrtItem(idx=idx, timeline=src_list[-1].getTimeline())
@@ -240,7 +231,7 @@ class SrtTranslator():
                     trans_logger.debug(dst_item.content)
 
                 self.dst_page.appendSrt(dst_item)
-        
+
         return self.dst_page
 
     # TODO: convert dst page struct into lines to write to file.
@@ -259,10 +250,10 @@ class SrtTranslator():
             if origin:
                 content += item.getContent(self.src_lang) + "\n"
             content += item.getContent(self.dst_lang) + "\n"
-        
+
             if DEBUG:
                 trans_logger.debug(content)
-        
+
         return content
 
 def test(path):
@@ -272,5 +263,5 @@ def test(path):
 if __name__ == "main":
     path = sys.argv[1]
     test(path)
-    
+
 
