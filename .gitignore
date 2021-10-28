@@ -135,4 +135,4 @@ logs/
 output/
 *.srt
 CS143Srt/
-config.json
+Translator/TxyConfig.json

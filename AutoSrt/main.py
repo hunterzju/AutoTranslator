@@ -46,18 +46,14 @@ def main():
 
     f_loader = FileLoader()
 
-    srt_trans = SrtTranslator(src_lang="en", dst_lang="zh-CN")  
+    srt_trans = SrtTranslator(src_lang="en", dst_lang="zh")  
     srt_lines = f_loader.readFromFile(src_path)
     srt_trans.getSrcPageFromLines(srt_lines, src_lang="en")
     src_content = srt_trans.importContentFromPage()
     dst_page = srt_trans.constructDstPage(src_content)
-    # res = srt_trans.translateContent(src_content, dst_lang="zh-CN")
-    # dst_page = srt_trans.setDstPageFromContent(res, origin=True)
-    # srt_trans.setDstPage(dst_page)
-    # dst_lines = srt_trans.exportPageToLines()
     
-    dst_page = srt_trans.translateContent(dst_lang="zh-CN")
-    dst_lines = srt_trans.exportPageToLines(origin=True)
+    dst_page = srt_trans.translateContent(dst_lang="zh")
+    dst_lines = srt_trans.exportPageToLines(dst_page, origin=True))
     
     f_dumper = FileDumper()
     f_dumper.dumpToFile(dst_path, dst_lines)

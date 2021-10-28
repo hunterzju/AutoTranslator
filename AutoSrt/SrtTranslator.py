@@ -1,8 +1,18 @@
 import sys
 import os
-from AutoSrt import DEBUG, ROOT_PATH
-# ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-# sys.path.append(ROOT_PATH)
+from AutoSrt import DEBUG
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(ROOT_PATH)
+
+import time
+from Srt import SrtItem, SrtPage, StringOPs
+from Translator.TxyTranslator import TencentTranslate
+from pygoogletranslation import Translator
+from Utils.LogFrame import default_logger, LoggerExt
+
+trans_logger = default_logger
+g_str_ops = StringOPs()
+
 
 '''
 description: Translate Srt file from source language to destination language.
@@ -15,7 +25,7 @@ class SrtTranslator():
         self.dst_lang = dst_lang
         self.src_page = src_page
         self.dst_page = dst_page
-        self.trans_client = Translator()
+        self.trans_client = TencentTranslate()
 
     def setSrcLanguage(self, language):
         self.src_lang = language            # TODO: assert language Enum
@@ -142,17 +152,21 @@ class SrtTranslator():
             dst_lang = self.dst_lang
 
         for idx, item in enumerate(self.dst_page.getSrtList()):
+            if self.src_lang not in item.content.keys():
+                pass
             if item.getContent(self.src_lang) in ['' or None]:
                 continue
             # res = self.trans_client.translate(item.getContent(self.src_lang), dest=self.dst_lang)
-            res = translateText(item.getContent(self.src_lang), self.dst_lang, self.src_lang)
+            if DEBUG:
+                trans_logger.debug(item.getContent(self.src_lang))
+            res = TencentTranslate().translate(text=item.getContent(self.src_lang), target=self.dst_lang)
             if DEBUG:
                 trans_logger.debug(str(idx) + ":" + str(res))
-            self.dst_page.srt_list[idx].addContent(self.dst_lang, res.text)
+            self.dst_page.srt_list[idx].addContent(self.dst_lang, res)
 
-            # avoid ip banned by google, FIXME: use proxy instead.
+            # tencent translate api limit to 5/1s.
             if idx % 5 == 0:
-                time.sleep(random.randrange(10,20))
+                time.sleep(1)
 
         return self.dst_page
 
@@ -241,18 +255,23 @@ class SrtTranslator():
     param {*} origin
     return {*}
     '''
-    def exportPageToLines(self, origin=False):
+    def exportPageToLines(self, srt_page, origin=False):
         content = ""
 
-        for item in self.dst_page.getSrtList():
+        for item in srt_page.getSrtList():
             content += str(item.getIdx()) + "\n"
             content += item.getTimeline() + "\n"
             if origin:
-                content += item.getContent(self.src_lang) + "\n"
-            content += item.getContent(self.dst_lang) + "\n"
+                if self.src_lang not in item.content.keys():
+                    pass
+                else:
+                    content += item.getContent(self.src_lang) + "\n"
+            if self.dst_lang in item.content.keys():
+                content += item.getContent(self.dst_lang) + "\n"
+            content += "\n"
 
-            if DEBUG:
-                trans_logger.debug(content)
+        if DEBUG:
+            trans_logger.debug(content)
 
         return content
 
