@@ -1,5 +1,6 @@
 import argparse
 from Utils.LogFrame import default_logger
+from AutoSrt import SrtTranslator
 
 def parsePrepare():
     parser = argparse.ArgumentParser(prog='Translator', usage="-m srt|rst -i inpath -o outpath")
@@ -11,13 +12,21 @@ def parsePrepare():
 
     return parser
 
+def translateSrtFile():
+    # TODO: srt translate by file.
+    pass
+
+def translateSrtDir():
+    # TODO: srt translate by folder
+    pass
+
 def main():
     parser = parsePrepare()
     args = parser.parse_args()
 
     translator = None
     if args.mode == "srt":
-        pass
+        translator = SrtTranslator(args.src_lang, args.dst_lang)
     elif args.mode == "rst":
         default_logger.error("Rst file translate not supported.")
 
