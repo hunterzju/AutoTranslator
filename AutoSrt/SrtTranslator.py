@@ -4,7 +4,7 @@ ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(ROOT_PATH)
 
 import time
-from Srt import SrtItem, SrtPage, StringOPs
+from AutoSrt.Srt import SrtItem, SrtPage, StringOPs
 from Translator.TxyTranslator import TencentTranslate
 # from pygoogletranslation import Translator        # call times limited.
 from Utils.LogFrame import default_logger
