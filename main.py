@@ -1,4 +1,5 @@
 import argparse
+from logging import ERROR
 from Utils.LogFrame import default_logger
 from AutoSrt import SrtTranslator
 
@@ -29,6 +30,7 @@ def main():
         translator = SrtTranslator(args.src_lang, args.dst_lang)
     elif args.mode == "rst":
         default_logger.error("Rst file translate not supported.")
+        raise ValueError
 
 
 if __name__ == "__main__":
