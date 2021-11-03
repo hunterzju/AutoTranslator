@@ -55,7 +55,7 @@ class SrtTranslator():
     def constructSrcPageFromLines(self, lines, src_lang=None):
         # TODO: check if src_lang == self.src_lang
         if src_lang is None:
-            self.logger.warning("src lange is not set, use {} instead.".format(self.src_lang))
+            self.logger.warning(f"src lange is not set, use {self.src_lang} instead.")
             src_lang = self.src_lang
         srt_page = SrtPage(lang=src_lang, srt_list=[])
 
@@ -155,7 +155,7 @@ class SrtTranslator():
             srt_page = self.src_page
 
         if dst_lang == None:
-            trans_logger.warning("Translator dst language not set. Use default language {}".format(self.dst_lang))
+            trans_logger.warning(f"Translator dst language not set. Use default language {self.dst_lang}")
             dst_lang = self.dst_lang
 
         for idx, item in enumerate(srt_page.getSrtList()):
@@ -191,13 +191,13 @@ class SrtTranslator():
         for item in srt_page.getSrtList():
             content += str(item.getIdx()) + "\n"
             content += item.getTimeline() + "\n"
+            if self.dst_lang in item.content.keys():
+                content += item.getContent(self.dst_lang) + "\n"
             if origin:
                 if self.src_lang not in item.content.keys():
                     pass
                 else:
                     content += item.getContent(self.src_lang) + "\n"
-            if self.dst_lang in item.content.keys():
-                content += item.getContent(self.dst_lang) + "\n"
             content += "\n"
 
         if DEBUG:
@@ -217,13 +217,13 @@ return {*} res - text strings, can use file.write() into a file.
 def translateSrt(src_lines, src_lang="en", dst_lang="zh", split=False, original=False):
     res_content = None
 
-    srt_trans = SrtTranslator(src_lang=src_lang, dst_lang=dst_lang)  
+    srt_trans = SrtTranslator(src_lang=src_lang, dst_lang=dst_lang)
     src_page = srt_trans.constructSrcPageFromLines(src_lines, src_lang=src_lang)
     dst_page = src_page
     if split:
         src_content = srt_trans.extractContentFromPage(src_page)
         dst_page = srt_trans.constructDstPage(src_content)
-    
+
     dst_page = srt_trans.translatePage(dst_lang=dst_lang, srt_page=dst_page)
     res = srt_trans.exportPageToLines(dst_page, origin=original)
 
@@ -241,7 +241,7 @@ def test():
 
     srt_lines = f_reader.readFromFile(src_path)
     dst_lines = translateSrt(srt_lines, src_lang="en", dst_lang="zh", split=False, original=True)
-    
+
     f_writer.dumpToFile(dst_path, dst_lines)
 
 if __name__ == "__main__":

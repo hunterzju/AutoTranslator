@@ -32,7 +32,7 @@ class SrtItem:
     
     def getContent(self, lang):
         if lang not in self.content.keys():
-            srt_logger.warning("key-{} not found in srt content.".format(lang))
+            srt_logger.warning(f"key-{lang} not found in srt content.")
             return None
         return self.content[lang]
 

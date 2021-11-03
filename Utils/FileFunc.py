@@ -23,11 +23,17 @@ class FileRW:
     def setFileMode(self, mode_str):
         self.mod = mode_str
     
-    def readFromFile(self, path):
+    def readLinesFromFile(self, path):
         lines = None
         with open(path, mode=self.mode, encoding=self.encoding) as fr:
             lines = fr.readlines()
         return lines
+    
+    def readContentFromFile(self, path):
+        content = None
+        with open(path, mode=self.mode, encoding=self.encoding) as fr:
+            content = fr.read()
+        return content
 
     def dumpToFile(self, path, content):
         with open(path, mode=self.mode, encoding=self.encoding) as fw:
